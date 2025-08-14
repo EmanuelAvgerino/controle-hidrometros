@@ -14,7 +14,7 @@ ChartJS.defaults.borderColor = 'rgba(0, 0, 0, 0.05)';
 const simulatedDatabase = {
     users: [
         { id: 1, username: 'admin', password: 'Laryssa123', role: 'admin' },
-        { id: 2, username: 'plantonista', password: '123', role: 'plantonista' },
+        { id: 2, username: 'plantonista', password: '123456', role: 'plantonista' },
     ],
 };
 
