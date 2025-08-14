@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
+import { db, auth } from './firebase';
+import { collection, getDocs, setDoc, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -11,12 +14,7 @@ ChartJS.defaults.borderColor = 'rgba(0, 0, 0, 0.05)';
 //  1. DADOS E LÓGICA DE NEGÓCIO (Simulação de Backend)
 // ===================================================================================
 
-const simulatedDatabase = {
-    users: [
-        { id: 1, username: 'admin', password: 'Laryssa123', role: 'admin' },
-        { id: 2, username: 'plantonista', password: '123456', role: 'plantonista' },
-    ],
-};
+// Removido backend simulado. Usuários e dados agora são gerenciados pelo Firebase.
 
 // ===================================================================================
 //  2. HOOKS PERSONALIZADOS (Para organizar a lógica)
@@ -26,21 +24,34 @@ const simulatedDatabase = {
 const useAuth = () => {
     const [currentUser, setCurrentUser] = useState(null);
     useEffect(() => {
-        const loggedInUser = sessionStorage.getItem('loggedInUser');
-        if (loggedInUser) setCurrentUser(JSON.parse(loggedInUser));
+        const unsub = auth.onAuthStateChanged(user => {
+            if (user) {
+                // Recupera role do Firestore
+                getDocs(collection(db, 'users')).then(snapshot => {
+                    const userData = snapshot.docs.find(doc => doc.data().email === user.email);
+                    if (userData) {
+                        setCurrentUser({ username: user.email, role: userData.data().role });
+                    } else {
+                        setCurrentUser({ username: user.email, role: 'plantonista' });
+                    }
+                });
+            } else {
+                setCurrentUser(null);
+            }
+        });
+        return () => unsub();
     }, []);
-    const login = (username, password) => {
-        const foundUser = simulatedDatabase.users.find(u => u.username === username && u.password === password);
-        if (foundUser) {
-            setCurrentUser(foundUser);
-            sessionStorage.setItem('loggedInUser', JSON.stringify(foundUser));
+    const login = async (username, password) => {
+        try {
+            await signInWithEmailAndPassword(auth, username, password);
             return null;
+        } catch (error) {
+            return 'Usuário ou senha inválidos.';
         }
-        return 'Usuário ou senha inválidos.';
     };
-    const logout = () => {
+    const logout = async () => {
+        await signOut(auth);
         setCurrentUser(null);
-        sessionStorage.removeItem('loggedInUser');
     };
     return { currentUser, login, logout };
 };
@@ -49,12 +60,22 @@ const useAuth = () => {
 const useCondoData = () => {
     const [allData, setAllData] = useState({});
     useEffect(() => {
-        const allStoredData = JSON.parse(localStorage.getItem('condoManagerData')) || {};
-        setAllData(allStoredData);
+        // Escuta dados em tempo real do Firestore
+        const unsub = onSnapshot(collection(db, 'lotes'), (snapshot) => {
+            const data = {};
+            snapshot.forEach(doc => {
+                data[doc.id] = doc.data().registros || [];
+            });
+            setAllData(data);
+        });
+        return () => unsub();
     }, []);
-    const updateAllData = (newData) => {
+    const updateAllData = async (newData) => {
+        // Atualiza todos os lotes no Firestore
+        for (const loteId in newData) {
+            await setDoc(doc(db, 'lotes', loteId), { registros: newData[loteId] });
+        }
         setAllData(newData);
-        localStorage.setItem('condoManagerData', JSON.stringify(newData));
     };
     return { allData, updateAllData };
 };
