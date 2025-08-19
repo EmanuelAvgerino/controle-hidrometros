@@ -216,7 +216,6 @@ const HistoricoTable = ({ registros, onEdit, onDelete, isAdmin }) => (
 const AnaliseView = ({ registros, onExportPDF, onExportCSV, selectedLote }) => {
     const exportContentRef = useRef();
     if (registros.length < 1) return <div className="text-center py-12 px-4 border-dashed border-2 border-gray-300 rounded-lg"><p className="text-gray-500">Adicione pelo menos um registro para gerar um comparativo.</p></div>;
-    
     const chartData = { 
         labels: registros.map(r => {
             const [ano, mes] = r.mesAno.split('-');
@@ -226,46 +225,13 @@ const AnaliseView = ({ registros, onExportPDF, onExportCSV, selectedLote }) => {
         datasets: [{ 
             label: 'Consumo (litros)', 
             data: registros.map(r => r.consumo * 1000), 
-            backgroundColor: 'rgba(107, 114, 128, 0.6)', 
+            backgroundColor: 'rgba(0, 0, 255, 1)', 
             borderColor: 'rgba(55, 65, 81, 1)', 
             borderWidth: 1, 
             borderRadius: 4 
         }] 
     };
-    
-    const chartOptions = { 
-        responsive: true, 
-        plugins: { 
-            legend: { display: false }, 
-            title: { display: false }, 
-            tooltip: { 
-                enabled: true,
-                callbacks: {
-                    title: (context) => context[0].label.split(',')[0],
-                    label: function(context) {
-                        let label = context.dataset.label || '';
-                        if (label) { label += ': '; }
-                        if (context.parsed.y !== null) {
-                            label += context.parsed.y.toLocaleString('pt-BR') + ' litros';
-                        }
-                        return label;
-                    }
-                }
-            }
-        }, 
-        scales: { 
-            y: { 
-                beginAtZero: true, 
-                title: { display: true, text: 'Consumo (litros)', color: '#0263eb' }, 
-                grid: { color: 'rgba(0, 0, 0, 0.05)' } 
-            }, 
-            x: { 
-                ticks: { font: { size: 11 }, color: '#374151' }, 
-                grid: { color: 'rgba(0, 0, 0, 0.05)' } 
-            } 
-        },
-    };
-
+    const chartOptions = { responsive: true, maintainAspectRatio: false, layout: { padding: { bottom: 30 } }, plugins: { legend: { display: false }, title: { display: false }, tooltip: { enabled: true, callbacks: { title: (context) => context[0].label.split(',')[0], label: function(context) { let label = context.dataset.label || ''; if (label) { label += ': '; } if (context.parsed.y !== null) { label += context.parsed.y.toLocaleString('pt-BR') + ' litros'; } return label; } } }}, scales: { y: { beginAtZero: true, title: { display: true, text: 'Consumo (litros)', color: '#4b5563' }, grid: { color: 'rgba(0, 0, 0, 0.05)' } }, x: { ticks: { font: { size: 11 }, color: '#374151' }, grid: { color: 'rgba(0, 0, 0, 0.05)' } } }};
     const getMensagemGrafico = () => {
         const ultimo = registros[registros.length - 1]; let msg = ''; let className = 'mt-4 text-center p-4 rounded-lg ';
         if (registros.length === 1) { msg = `Primeiro registro: <strong>${ultimo.consumo.toFixed(2)} m³</strong> (${(ultimo.consumo * 1000).toLocaleString('pt-BR')} litros).`; className += 'bg-gray-100 text-gray-800'; } 
@@ -279,9 +245,9 @@ const AnaliseView = ({ registros, onExportPDF, onExportCSV, selectedLote }) => {
     return (
         <div>
             <div id="export-content" ref={exportContentRef} className="bg-white rounded-2xl p-4">
-                <h2 className="text-2xl font-bold text-center text-gray-800 pt-4">Relatório do Lote: {selectedLote}</h2>
+                <h2 className="text-2xl font-bold text-center text-gray-800 pt-4 pb-2">DEMONSTRATIVO DE CONSUMO D'ÁGUA - 2025 - LOTE : {selectedLote}</h2>
                 <h3 className="text-lg font-semibold text-center text-gray-600 mb-8">Comparativo de Consumo</h3>
-                <div className="p-4"><Bar options={chartOptions} data={chartData} /></div>
+                <div className="p-4 h-96"><Bar options={chartOptions} data={chartData} /></div>
                 {getMensagemGrafico()}
             </div>
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -291,6 +257,7 @@ const AnaliseView = ({ registros, onExportPDF, onExportCSV, selectedLote }) => {
         </div>
     );
 };
+
 
 // --- components/LoteManager.js ---
 const LoteManager = ({ initialLote, onSwitchToDashboard }) => {
