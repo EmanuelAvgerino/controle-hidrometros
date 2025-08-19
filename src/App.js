@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef, useMemo, createContext, useContext 
 import { db, auth } from './firebase';
 import { collection, getDocs, setDoc, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, LineController, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
 // Configuração global do Chart.js para o tema claro
-ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, LineController, Title, Tooltip, Legend);
 ChartJS.defaults.color = '#334155'; // slate-700
 ChartJS.defaults.borderColor = 'rgba(0, 0, 0, 0.05)';
 
