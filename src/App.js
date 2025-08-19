@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef, useMemo, createContext, useContext 
 import { db, auth } from './firebase';
 import { collection, getDocs, setDoc, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
 // Configuração global do Chart.js para o tema claro
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend);
 ChartJS.defaults.color = '#334155'; // slate-700
 ChartJS.defaults.borderColor = 'rgba(0, 0, 0, 0.05)';
 
@@ -24,17 +24,18 @@ ChartJS.defaults.borderColor = 'rgba(0, 0, 0, 0.05)';
 const useAuth = () => {
     const [currentUser, setCurrentUser] = useState(null);
     useEffect(() => {
-        const unsub = auth.onAuthStateChanged(user => {
+        const unsub = auth.onAuthStateChanged(async (user) => {
             if (user) {
-                // Recupera role do Firestore
-                getDocs(collection(db, 'users')).then(snapshot => {
-                    const userData = snapshot.docs.find(doc => doc.data().email === user.email);
-                    if (userData) {
-                        setCurrentUser({ username: user.email, role: userData.data().role });
-                    } else {
-                        setCurrentUser({ username: user.email, role: 'plantonista' });
-                    }
-                });
+                // Busca o documento do usuário pelo email diretamente
+                const { query, where, getDocs, collection } = await import('firebase/firestore');
+                const q = query(collection(db, 'users'), where('email', '==', user.email));
+                const snapshot = await getDocs(q);
+                if (!snapshot.empty) {
+                    const userData = snapshot.docs[0].data();
+                    setCurrentUser({ username: user.email, role: userData.role });
+                } else {
+                    setCurrentUser({ username: user.email, role: 'plantonista' });
+                }
             } else {
                 setCurrentUser(null);
             }
@@ -216,28 +217,74 @@ const HistoricoTable = ({ registros, onEdit, onDelete, isAdmin }) => (
 const AnaliseView = ({ registros, onExportPDF, onExportCSV, selectedLote }) => {
     const exportContentRef = useRef();
     if (registros.length < 1) return <div className="text-center py-12 px-4 border-dashed border-2 border-gray-300 rounded-lg"><p className="text-gray-500">Adicione pelo menos um registro para gerar um comparativo.</p></div>;
-    const chartData = { 
+    const chartData = {
         labels: registros.map(r => {
             const [ano, mes] = r.mesAno.split('-');
             const consumoLitros = (r.consumo * 1000).toLocaleString('pt-BR');
             return [`${mes}/${ano.slice(2)}`, `${consumoLitros} litros`];
         }),
-        datasets: [{ 
-            label: 'Consumo (litros)', 
-            data: registros.map(r => r.consumo * 1000), 
-            backgroundColor: 'rgba(0, 0, 255, 1)', 
-            borderColor: 'rgba(55, 65, 81, 1)', 
-            borderWidth: 1, 
-            borderRadius: 4 
-        }] 
+        datasets: [
+            {
+                label: 'Consumo (litros)',
+                data: registros.map(r => r.consumo * 1000),
+                backgroundColor: 'rgba(0, 0, 255, 1)',
+                borderColor: 'rgba(55, 65, 81, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+            },
+            {
+                label: 'Limite 15.000 litros',
+                data: Array(registros.length).fill(15000),
+                type: 'line',
+                borderColor: 'red',
+                borderWidth: 2,
+                borderDash: [8, 6],
+                pointRadius: 0,
+                fill: false,
+                order: 2
+            }
+        ]
     };
-    const chartOptions = { responsive: true, maintainAspectRatio: false, layout: { padding: { bottom: 30 } }, plugins: { legend: { display: false }, title: { display: false }, tooltip: { enabled: true, callbacks: { title: (context) => context[0].label.split(',')[0], label: function(context) { let label = context.dataset.label || ''; if (label) { label += ': '; } if (context.parsed.y !== null) { label += context.parsed.y.toLocaleString('pt-BR') + ' litros'; } return label; } } }}, scales: { y: { beginAtZero: true, title: { display: true, text: 'Consumo (litros)', color: '#4b5563' }, grid: { color: 'rgba(0, 0, 0, 0.05)' } }, x: { ticks: { font: { size: 11 }, color: '#374151' }, grid: { color: 'rgba(0, 0, 0, 0.05)' } } }};
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { bottom: 30 } },
+        plugins: {
+            legend: { display: false },
+            title: { display: false },
+            tooltip: {
+                enabled: true,
+                callbacks: {
+                    title: (context) => context[0].label.split(',')[0],
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) { label += ': '; }
+                        if (context.parsed.y !== null) {
+                            label += context.parsed.y.toLocaleString('pt-BR') + ' litros';
+                        }
+                        return label;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Consumo (litros)', color: '#4b5563' },
+                grid: { color: 'rgba(0, 0, 0, 0.05)' }
+            },
+            x: {
+                ticks: { font: { size: 11 }, color: '#374151' },
+                grid: { color: 'rgba(0, 0, 0, 0.05)' }
+            }
+        }
+    };
     const getMensagemGrafico = () => {
         const ultimo = registros[registros.length - 1]; let msg = ''; let className = 'mt-4 text-center p-4 rounded-lg ';
-        if (registros.length === 1) { msg = `Primeiro registro: <strong>${ultimo.consumo.toFixed(2)} m³</strong> (${(ultimo.consumo * 1000).toLocaleString('pt-BR')} litros).`; className += 'bg-gray-100 text-gray-800'; } 
+        if (registros.length === 1) { msg = `Primeiro registro: <strong>${ultimo.consumo.toFixed(2)} m³</strong> (${(ultimo.consumo * 1000).toLocaleString('pt-BR')} litros).`; className += 'bg-gray-100 text-gray-800'; }
         else { const penultimo = registros[registros.length - 2]; const diferenca = ultimo.consumo - penultimo.consumo; const diferencaLitros = Math.abs(diferenca * 1000).toLocaleString('pt-BR');
-            if (diferenca > 0.001) { msg = `Aumento de <strong>${diferenca.toFixed(2)} m³</strong> (${diferencaLitros} litros) desde o mês anterior.`; className += 'bg-red-100 text-red-800'; } 
-            else if (diferenca < -0.001) { msg = `Economia de <strong>${Math.abs(diferenca).toFixed(2)} m³</strong> (${diferencaLitros} litros) desde o mês anterior.`; className += 'bg-green-100 text-green-800'; } 
+            if (diferenca > 0.001) { msg = `Aumento de <strong>${diferenca.toFixed(2)} m³</strong> (${diferencaLitros} litros) desde o mês anterior.`; className += 'bg-red-100 text-red-800'; }
+            else if (diferenca < -0.001) { msg = `Economia de <strong>${Math.abs(diferenca).toFixed(2)} m³</strong> (${diferencaLitros} litros) desde o mês anterior.`; className += 'bg-green-100 text-green-800'; }
             else { msg = `Consumo estável em <strong>${ultimo.consumo.toFixed(2)} m³</strong>.`; className += 'bg-gray-100 text-gray-800'; }
         }
         return <div className={className} dangerouslySetInnerHTML={{ __html: msg }} />;
@@ -245,7 +292,10 @@ const AnaliseView = ({ registros, onExportPDF, onExportCSV, selectedLote }) => {
     return (
         <div>
             <div id="export-content" ref={exportContentRef} className="bg-white rounded-2xl p-4">
-                <h2 className="text-2xl font-bold text-center text-gray-800 pt-4 pb-2">DEMONSTRATIVO DE CONSUMO D'ÁGUA - 2025 - LOTE  {selectedLote}</h2>
+                <div className="flex items-center justify-center gap-4 pt-4 pb-2">
+                    <img src="/logo pedra.jpg" alt="Logo" className="h-20 w-20 object-cover border border-gray-300 shadow rounded-lg" style={{marginRight: '12px', objectPosition: 'center 0%'}} />
+                    <h2 className="text-2xl font-bold text-gray-800">DEMONSTRATIVO DE CONSUMO D'ÁGUA - 2025 - LOTE  {selectedLote}</h2>
+                </div>
                 <h3 className="text-lg font-semibold text-center text-gray-600 mb-8">Comparativo de Consumo</h3>
                 <div className="p-4 h-96"><Bar options={chartOptions} data={chartData} /></div>
                 {getMensagemGrafico()}
@@ -327,13 +377,20 @@ const LoteManager = ({ initialLote, onSwitchToDashboard }) => {
         const { html2canvas, jspdf } = window; if (!ref.current || !html2canvas || !jspdf) return;
         ref.current.style.backgroundColor = '#FFFFFF';
         html2canvas(ref.current, { scale: 2, backgroundColor: '#FFFFFF' }).then(canvas => {
-            const imgData = canvas.toDataURL('image/png'); const pdf = new jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const pdfWidth = pdf.internal.pageSize.getWidth(); const pdfHeight = pdf.internal.pageSize.getHeight();
-            const canvasRatio = canvas.width / canvas.height; let targetWidth = pdfWidth * 0.9;
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const canvasRatio = canvas.width / canvas.height;
+            let targetWidth = pdfWidth * 0.98; // aumenta para 98% da largura
             let targetHeight = targetWidth / canvasRatio;
-            if (targetHeight > pdfHeight * 0.95) { targetHeight = pdfHeight * 0.95; targetWidth = targetHeight * canvasRatio; }
-            const x = (pdfWidth - targetWidth) / 2; const y = 15;
-            pdf.addImage(imgData, 'PNG', x, y, targetWidth, targetHeight); 
+            if (targetHeight > pdfHeight * 0.98) {
+                targetHeight = pdfHeight * 0.98;
+                targetWidth = targetHeight * canvasRatio;
+            }
+            const x = (pdfWidth - targetWidth) / 2;
+            const y = (pdfHeight - targetHeight) / 2; // centraliza verticalmente
+            pdf.addImage(imgData, 'PNG', x, y, targetWidth, targetHeight);
             pdf.save(`relatorio_lote_${selectedLote}.pdf`);
             ref.current.style.backgroundColor = '';
         });
