@@ -256,7 +256,7 @@ const AnaliseView = ({ registros, onExportPDF, onExportCSV, selectedLote }) => {
         scales: { 
             y: { 
                 beginAtZero: true, 
-                title: { display: true, text: 'Consumo (litros)', color: '#4b5563' }, 
+                title: { display: true, text: 'Consumo (litros)', color: '#0263eb' }, 
                 grid: { color: 'rgba(0, 0, 0, 0.05)' } 
             }, 
             x: { 
