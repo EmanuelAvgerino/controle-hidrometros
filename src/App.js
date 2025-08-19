@@ -245,7 +245,7 @@ const AnaliseView = ({ registros, onExportPDF, onExportCSV, selectedLote }) => {
     return (
         <div>
             <div id="export-content" ref={exportContentRef} className="bg-white rounded-2xl p-4">
-                <h2 className="text-2xl font-bold text-center text-gray-800 pt-4 pb-2">DEMONSTRATIVO DE CONSUMO D'ÁGUA - 2025 - LOTE : {selectedLote}</h2>
+                <h2 className="text-2xl font-bold text-center text-gray-800 pt-4 pb-2">DEMONSTRATIVO DE CONSUMO D'ÁGUA - 2025 - LOTE  {selectedLote}</h2>
                 <h3 className="text-lg font-semibold text-center text-gray-600 mb-8">Comparativo de Consumo</h3>
                 <div className="p-4 h-96"><Bar options={chartOptions} data={chartData} /></div>
                 {getMensagemGrafico()}
@@ -257,7 +257,6 @@ const AnaliseView = ({ registros, onExportPDF, onExportCSV, selectedLote }) => {
         </div>
     );
 };
-
 
 // --- components/LoteManager.js ---
 const LoteManager = ({ initialLote, onSwitchToDashboard }) => {
