@@ -72,11 +72,9 @@ const useCondoData = () => {
         });
         return () => unsub();
     }, []);
-    const updateAllData = async (newData) => {
-        // Atualiza todos os lotes no Firestore
-        for (const loteId in newData) {
-            await setDoc(doc(db, 'lotes', loteId), { registros: newData[loteId] });
-        }
+    // Atualiza apenas o lote alterado no Firestore
+    const updateAllData = async (newData, loteIdAlterado) => {
+        await setDoc(doc(db, 'lotes', loteIdAlterado), { registros: newData[loteIdAlterado] });
         setAllData(newData);
     };
     return { allData, updateAllData };
@@ -403,7 +401,8 @@ const LoteManager = ({ initialLote, onSwitchToDashboard }) => {
             const newRecord = { id: Date.now(), mesAno, consumo, custo, ...parsedData };
             updatedRegistros = [...currentRegistros, newRecord];
         }
-        updateAllData({ ...allData, [selectedLote]: updatedRegistros });
+        // Atualiza apenas o lote alterado
+        updateAllData({ ...allData, [selectedLote]: updatedRegistros }, selectedLote);
     };
 
     const handleEdit = (id) => {
@@ -414,7 +413,8 @@ const LoteManager = ({ initialLote, onSwitchToDashboard }) => {
     const handleCancelEdit = () => { setEditingRecord(null); prepararProximoFormulario(registros); };
     const handleDelete = () => {
         const newRegistros = registros.filter(r => r.id !== recordToDelete);
-        updateAllData({ ...allData, [selectedLote]: newRegistros });
+        // Atualiza apenas o lote alterado
+        updateAllData({ ...allData, [selectedLote]: newRegistros }, selectedLote);
         setRecordToDelete(null);
     };
 
