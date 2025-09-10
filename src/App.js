@@ -150,9 +150,9 @@ const DashboardView = ({ onSelectLote }) => {
         data.consumoTotal = dadosUltimoMes.reduce((acc, curr) => acc + curr.consumo, 0);
         data.consumoMedio = data.verificados > 0 ? data.consumoTotal / data.verificados : 0; data.ranking = [...dadosUltimoMes].sort((a, b) => b.consumo - a.consumo);
         const thresholdAlto = data.consumoMedio * 1.5; const thresholdBaixo = data.consumoMedio * 0.5;
-        // Limita as anomalias altas aos 5 maiores consumidores
+        // Limita as anomalias altas e baixas aos 5 maiores/menores consumidores
         data.anomalias.altas = data.ranking.filter(r => r.consumo > thresholdAlto).slice(0, 5);
-        data.anomalias.baixas = data.ranking.filter(r => r.consumo > 0 && r.consumo < thresholdBaixo);
+        data.anomalias.baixas = data.ranking.filter(r => r.consumo > 0 && r.consumo < thresholdBaixo).slice(0, 5);
         return data;
     }, [allData]);
     const handleCardClick = (title, lotes) => setModalInfo({ show: true, title, lotes });
