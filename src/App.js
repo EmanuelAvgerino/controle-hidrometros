@@ -210,6 +210,43 @@ const RegistroForm = ({ onSave, editingRecord, onCancelEdit, formData, setFormDa
 // --- components/HistoricoTable.js ---
 // Versão otimizada com react-window
 const HistoricoTable = ({ registros, onEdit, onDelete, isAdmin }) => {
+    // Renderização tradicional se poucos registros
+    if (registros.length <= 20) {
+        return (
+            <div className="overflow-x-auto">
+                <table className="min-w-full bg-transparent">
+                    <thead className="bg-transparent">
+                        <tr>
+                            <th className="py-3 px-4 border-b border-gray-200 text-left text-sm font-semibold text-gray-500">Mês/Ano</th>
+                            <th className="py-3 px-4 border-b border-gray-200 text-left text-sm font-medium text-gray-500">Consumo</th>
+                            <th className="py-3 px-4 border-b border-gray-200 text-left text-sm font-medium text-gray-500">Custo (R$)</th>
+                            {isAdmin && <th className="py-3 px-4 border-b border-gray-200 text-left text-sm font-medium text-gray-500">Ações</th>}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {registros.map((r) => (
+                            <tr key={r.id} className="hover:bg-gray-50/50">
+                                <td className="py-4 px-4 border-b border-gray-200 text-gray-700">{r.mesAno.split('-').reverse().join('/')}</td>
+                                <td className="py-4 px-4 border-b border-gray-200">
+                                    <span className="font-semibold text-gray-800">{r.consumo.toFixed(2)} m³</span>
+                                    <span className="block text-sm text-gray-500">{(r.consumo * 1000).toLocaleString('pt-BR')} litros</span>
+                                </td>
+                                <td className="py-4 px-4 border-b border-gray-200 text-gray-700">{r.custo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                {isAdmin && (
+                                    <td className="py-4 px-4 border-b border-gray-200 text-sm space-x-4">
+                                        <button onClick={() => onEdit(r.id)} className="font-semibold text-gray-700 hover:text-black">Editar</button>
+                                        <button onClick={() => onDelete(r.id)} className="font-semibold text-red-600 hover:text-red-500">Remover</button>
+                                    </td>
+                                )}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    }
+
+    // Virtualização para muitos registros
     const Row = ({ index, style }) => {
         const r = registros[index];
         return (
@@ -230,6 +267,7 @@ const HistoricoTable = ({ registros, onEdit, onDelete, isAdmin }) => {
         );
     };
 
+    // Renderização virtualizada (fora do tbody)
     return (
         <div className="overflow-x-auto">
             <table className="min-w-full bg-transparent">
@@ -241,17 +279,21 @@ const HistoricoTable = ({ registros, onEdit, onDelete, isAdmin }) => {
                         {isAdmin && <th className="py-3 px-4 border-b border-gray-200 text-left text-sm font-medium text-gray-500">Ações</th>}
                     </tr>
                 </thead>
-                <tbody>
-                    <List
-                        height={Math.min(400, registros.length * 60)}
-                        itemCount={registros.length}
-                        itemSize={60}
-                        width="100%"
-                    >
-                        {Row}
-                    </List>
-                </tbody>
             </table>
+            <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                <table className="min-w-full bg-transparent">
+                    <tbody>
+                        <List
+                            height={Math.min(400, registros.length * 60)}
+                            itemCount={registros.length}
+                            itemSize={60}
+                            width="100%"
+                        >
+                            {({ index, style }) => Row({ index, style })}
+                        </List>
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 };
